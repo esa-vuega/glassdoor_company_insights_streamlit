@@ -6,8 +6,6 @@ load_dotenv()
 
 api_key = os.getenv('YOUTUBE-API-KEY')
 
-# api_key = 'AIzaSyBfLAlxX-twVsXhvX0dd3TzlZ67CokB4XY'
-
 youtube = build('youtube', 'v3', developerKey=api_key)
 
 # Define the company you want to search for
