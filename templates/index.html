@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reddit Data Analysis</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>Reddit Data Analysis for {{ company_name }}</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Text</th>
+                <th>URL</th>
+                <th>Upvotes</th>
+                <th>Sentiment</th>
+                <th>Salaries Mentioned</th>
+                <th>Company Mention</th>
+                <th>Comments</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for post in posts_data %}
+            <tr>
+                <td>{{ post.title }}</td>
+                <td>{{ post.selftext }}</td>
+                <td><a href="{{ post.url }}" target="_blank">Link</a></td>
+                <td>{{ post.upvotes }}</td>
+                <td>{{ post.sentiment }}</td>
+                <td>{{ post.salaries }}</td>
+                <td>{{ post.company_mentions }}</td>
+                <td>
+                    <ul>
+                        {% for comment in post.comments %}
+                        <li>{{ comment.body }} (Sentiment: {{ comment.sentiment }})</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
