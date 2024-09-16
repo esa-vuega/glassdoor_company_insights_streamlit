@@ -1,1 +1,6 @@
 google-api-python-client
+Flask
+praw
+TextBlob
+spacy
+requests
