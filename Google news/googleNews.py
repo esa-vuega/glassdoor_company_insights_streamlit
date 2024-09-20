@@ -38,13 +38,15 @@ query_input = st.text_input("Enter News Query", "Technology")
 if st.button("Fetch News"):
     if query_input:
         news_articles = fetch_news_serpapi(query_input)
+        article_count = len(news_articles)  # Count the number of articles
         
-        if news_articles:
-            # Display news articles
-            st.subheader(f"News Articles:")
+        if article_count > 0:
+            # Display the number of articles fetched
+            st.subheader(f"Found {article_count} articles:")
+            
+            # Display each article
             for idx, article in enumerate(news_articles):
-                st.markdown(f"<span style=' font-weight: bold;'>Article {idx + 1}:</span> <a href='{article['link']}'>{article['title']}</a>", unsafe_allow_html=True)
-                
+                st.markdown(f"<span style='font-weight: bold;'>Article {idx + 1}:</span> <a href='{article['link']}'>{article['title']}</a>", unsafe_allow_html=True)
                 st.write("---")
         else:
             st.error("Failed to fetch news or no articles found.")
