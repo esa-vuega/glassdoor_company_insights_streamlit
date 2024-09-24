@@ -9,7 +9,7 @@ api_key = os.getenv('YOUTUBE-API-KEY')
 youtube = build('youtube', 'v3', developerKey=api_key)
 
 # Define the company you want to search for
-company_name = "Tesla"  # Replace with any company name
+company_name = "Nexer group" 
 
 # Step 1: Search for channels related to the company name
 channel_search_request = youtube.search().list(

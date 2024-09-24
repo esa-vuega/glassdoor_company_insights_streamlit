@@ -1,3 +1,4 @@
 /companey-insights
 /.env
 /.vscode
+/data_sources/__pycache__

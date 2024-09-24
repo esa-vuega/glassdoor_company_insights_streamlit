@@ -1,46 +1,37 @@
 import os
 import praw
-from textblob import TextBlob
 import re
 import spacy
+import pandas as pd
+from textblob import TextBlob
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# Load spacy model for advanced text processing
 nlp = spacy.load('en_core_web_sm')
 
-# Reddit API credentials
 SECRET_KEY = os.getenv('REDDIT-SECRET-KEY')
 CLIENT_ID = os.getenv('REDDIT-CLIENT-ID')
 
-# Reddit API client setup
 reddit = praw.Reddit(client_id=CLIENT_ID,
                      client_secret=SECRET_KEY,
                      user_agent='Reddit-API')
 
-# Define subreddits to analyze
 subreddits = ['cscareerquestions', 'techjobs', 'Google', 'Amazon']
 
-# Regex pattern to capture salary information (e.g., "$120,000", "120k")
 salary_pattern = r'(\$\d{1,3}(,\d{3})+|\d{1,3}k)'
 
-# Function to analyze sentiment using TextBlob
 def analyze_sentiment(text):
     analysis = TextBlob(text)
     return analysis.sentiment.polarity, analysis.sentiment.subjectivity
 
-# Function to extract salary information from text
 def extract_salary(text):
     return re.findall(salary_pattern, text.lower())
 
-# Function to detect company name mention in text
 def extract_company_info(text, company_name):
     doc = nlp(text)
     return any(ent.text.lower() == company_name.lower() for ent in doc.ents)
 
-# Function to collect Reddit posts and comments data
 def collect_data(company_name):
     posts_data = []
 
@@ -58,7 +49,6 @@ def collect_data(company_name):
                 'company_mentions': extract_company_info(submission.title + ' ' + submission.selftext, company_name)
             }
 
-            # Collect comments data
             comments = submission.comments[:20]
             post_info['comments'] = []
             for comment in comments:
@@ -76,3 +66,31 @@ def collect_data(company_name):
             posts_data.append(post_info)
 
     return posts_data
+
+def save_to_csv(data, filename):
+    flat_data = []
+    for post in data:
+        for comment in post['comments']:
+            flat_data.append({
+                'title': post['title'],
+                'selftext': post['selftext'],
+                'url': post['url'],
+                'upvotes': post['upvotes'],
+                'post_sentiment': post['sentiment'],
+                'post_salaries': post['salaries'],
+                'post_company_mentions': post['company_mentions'],
+                'comment_body': comment['body'],
+                'comment_sentiment': comment['sentiment'],
+                'comment_salaries': comment['salaries'],
+                'comment_company_mentions': comment['company_mentions']
+            })
+
+    df = pd.DataFrame(flat_data)
+
+    df.to_csv(filename, index=False)
+    print(f'Data saved to {filename}')
+
+if __name__ == "__main__":
+    company_name = 'Nexer group'
+    data = collect_data(company_name)
+    save_to_csv(data, 'reddit_company_data.csv')
