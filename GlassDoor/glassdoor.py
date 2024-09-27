@@ -4,17 +4,22 @@ import streamlit as st
 
 def get_company_id(company_name):
     search_url = f"https://www.glassdoor.com/Search/results.htm?keyword={company_name.replace(' ', '%20')}"
+    print(search_url)
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br',
-        'Referer': 'https://www.google.com/',
-        'DNT': '1',  # Do Not Track
         'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1'
+        'Upgrade-Insecure-Requests': '1',
+        'Referer': 'https://www.glassdoor.com/',
+        'DNT': '1',  # Do Not Track
+        'Cache-Control': 'max-age=0',
     }
+
     
     response = requests.get(search_url, headers=headers)
+    print(response.status_code)
     soup = BeautifulSoup(response.text, 'html.parser')
 
     # Find the first result that matches the company
@@ -40,17 +45,24 @@ def fetch_glassdoor_reviews(company_name):
     glassdoorName, glassdoorID = get_company_id(company_name)
     if glassdoorName and glassdoorID:
         url = f"https://www.glassdoor.com/Reviews/{glassdoorName}-Reviews-E{glassdoorID}.htm"
+        print(url)
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept-Encoding': 'gzip, deflate, br',
             'Referer': 'https://www.google.com/',
             'DNT': '1',  # Do Not Track
             'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1'
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'same-origin',
+            'TE': 'Trailers'
         }
 
         response = requests.get(url, headers=headers)
+        
+        print(response.status_code)
         soup = BeautifulSoup(response.text, 'html.parser')
 
         # Overall rating
