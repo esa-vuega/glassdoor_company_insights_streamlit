@@ -19,6 +19,7 @@ def get_company_id(company_name):
 
     
     response = requests.get(search_url, headers=headers)
+    logging.info(response.status_code)
     print(response.status_code)
     soup = BeautifulSoup(response.text, 'html.parser')
 
@@ -62,6 +63,7 @@ def fetch_glassdoor_reviews(company_name):
 
         response = requests.get(url, headers=headers)
         
+        logging.info(response.status_code)
         print(response.status_code)
         soup = BeautifulSoup(response.text, 'html.parser')
 
