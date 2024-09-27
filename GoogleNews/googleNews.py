@@ -1,5 +1,5 @@
 import streamlit as st
-from serpapi import GoogleSearch
+from serpapi.google_search import GoogleSearch
 import os
 from dotenv import load_dotenv
 
