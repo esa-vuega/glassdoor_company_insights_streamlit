@@ -20,6 +20,7 @@ def get_company_id(company_name):
 
     scraper = cloudscraper.create_scraper()
     response = scraper.get(search_url, headers=headers)
+    print(response.headers)
     # response = requests.get(search_url, headers=headers)
     st.write(response.status_code)
     print(response.status_code)
