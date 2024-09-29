@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import streamlit as st
+import cloudscraper
 
 def get_company_id(company_name):
     search_url = f"https://www.glassdoor.com/Search/results.htm?keyword={company_name.replace(' ', '%20')}"
@@ -17,8 +18,9 @@ def get_company_id(company_name):
         'Cache-Control': 'max-age=0',
     }
 
-    
-    response = requests.get(search_url, headers=headers)
+    scraper = cloudscraper.create_scraper()
+    response = scraper.get(search_url, headers=headers)
+    # response = requests.get(search_url, headers=headers)
     st.write(response.status_code)
     print(response.status_code)
     soup = BeautifulSoup(response.text, 'html.parser')
