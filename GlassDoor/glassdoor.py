@@ -1,167 +1,111 @@
-import requests
-from bs4 import BeautifulSoup
 import streamlit as st
-import cloudscraper
+import os
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from fake_useragent import UserAgent
+import random
+import time
 
-def get_company_id(company_name):
+# Function to install geckodriver for Selenium on Streamlit Cloud
+@st.cache_resource
+def install_ff_driver():
+    os.system('sbase install geckodriver')  # Install geckodriver using seleniumbase
+    os.system('ln -s /home/appuser/venv/lib/python3.7/site-packages/seleniumbase/drivers/geckodriver /home/appuser/venv/bin/geckodriver')
+
+# Install driver only once per session
+_ = install_ff_driver()
+
+# Set up Selenium with Firefox in headless mode
+opts = FirefoxOptions()
+ua = UserAgent()
+opts.add_argument(f"user-agent={ua.random}")
+opts.add_argument("--headless")
+browser = webdriver.Firefox(options=opts)
+
+# Function to get Glassdoor company ID (adjust the logic as needed)
+def get_company_id_selenium(company_name):
     search_url = f"https://www.glassdoor.com/Search/results.htm?keyword={company_name.replace(' ', '%20')}"
-    print(search_url)
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Referer': 'https://www.glassdoor.com/',
-        'DNT': '1',  # Do Not Track
-        'Cache-Control': 'max-age=0',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-User': '?1',
-        'Sec-Fetch-Dest': 'document',
-    }
+    browser.get(search_url)
+    time.sleep(random.uniform(2, 5))
+    st.write(f"Searching for: {company_name} on Glassdoor...")
 
-    scraper = cloudscraper.create_scraper()
-    response = scraper.get(search_url, headers=headers)
-    st.write(response.headers)
-    # response = requests.get(search_url, headers=headers)
-    st.write(response.status_code)
-    print(response.status_code)
-    soup = BeautifulSoup(response.text, 'html.parser')
-
-    # Find the first result that matches the company
-    company_link = soup.find('a', {'data-test': 'company-tile'})
-    
-    if company_link:
-        company_url = company_link['href']
+    try:
+        # Wait for the page to load and find the first company link (modify the XPath based on your requirement)
+        company_link = browser.find_element(By.XPATH, "//a[@data-test='company-tile']")
+        company_url = company_link.get_attribute('href')
         parts = company_url.split('-EI_IE')
-    
-        # Extract company name (first part after 'Working-at-')
         company_name = parts[0].split('Working-at-')[-1]
-        
-        # Extract company ID (the number part)
         company_id = parts[1].split('.')[0]
-        
+
         return company_name, company_id
-    else:
-        st.error(f"Company '{company_name}' not found on Glassdoor.")
+    except Exception as e:
+        st.error(f"Failed to retrieve company ID: {e}")
         return None, None
-    
 
-def fetch_glassdoor_reviews(company_name):
-    glassdoorName, glassdoorID = get_company_id(company_name)
+# Function to scrape Glassdoor reviews (adjust logic based on the structure of the review page)
+def fetch_glassdoor_reviews_selenium(company_name):
+    glassdoorName, glassdoorID = get_company_id_selenium(company_name)
     if glassdoorName and glassdoorID:
-        url = f"https://www.glassdoor.com/Reviews/{glassdoorName}-Reviews-E{glassdoorID}.htm"
-        print(url)
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Referer': 'https://www.google.com/',
-            'DNT': '1',  # Do Not Track
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'same-origin',
-            'TE': 'Trailers'
-        }
+        try:
+            url = f"https://www.glassdoor.com/Reviews/{glassdoorName}-Reviews-E{glassdoorID}.htm"
+            browser.get(url)
+            st.write(f"Fetching reviews from: {url}")
+            # Print the page source to Streamlit (or save to file)
+            page_source = browser.page_source
+            with open("page_source.html", "w", encoding="utf-8") as f:
+                f.write(page_source)
+            # Get the overall rating
+            overall_rate_elem = browser.find_element(By.CLASS_NAME, "rating-headline-average_ratingContainer__PcIL1")
+            overall_rate = overall_rate_elem.text
 
-        response = requests.get(url, headers=headers)
-        st.write(response.status_code)
-        print(response.status_code)
-        soup = BeautifulSoup(response.text, 'html.parser')
+            # Extract reviews
+            reviews_list = browser.find_elements(By.XPATH, "//ol[@class='ReviewsList_reviewsList__yepAi']/li")
+            review_list = []
 
-        # Overall rating
-        overall_rate = soup.find('div', class_="rating-headline-average_ratingContainer__PcIL1").text
-        
-        # Find reviews
-        reviews = soup.find('ol', class_="ReviewsList_reviewsList__yepAi")
-        reviews = reviews.find_all('li')
-        
-        # Extract title, pros, and cons with checks
-        review_list = []
-        for review in reviews:
-            title = review.find('div', class_='review-details_titleHeadline__Bjso2')
-            pros = review.find('div', class_="review-details_pro__ZiMB2")
-            cons = review.find('div', class_="review-details_con__TuzoC")
-            rate = review.find('div', class_="review-details_subRatingContainer__eEV95")
+            for review_elem in reviews_list:
+                title = review_elem.find_element(By.CLASS_NAME, 'review-details_titleHeadline__Bjso2').text
+                pros = review_elem.find_element(By.CLASS_NAME, 'review-details_pro__ZiMB2').text
+                cons = review_elem.find_element(By.CLASS_NAME, 'review-details_con__TuzoC').text
+                rate = review_elem.find_element(By.CLASS_NAME, "review-details_subRatingContainer__eEV95").text
 
-            if title and pros and cons:
+                # Remove "Pros" and "Cons" labels from texts
                 review_list.append({
-                    'title': title.text.strip(),
-                    'pros': pros.text.strip()[4:],  # Remove first 4 characters
-                    'cons': cons.text.strip()[4:],  # Remove first 4 characters
-                    'rate': rate.text.strip()
+                    'title': title.strip(),
+                    'pros': pros.strip()[4:],  # Remove first 4 characters (label "Pros")
+                    'cons': cons.strip()[4:],  # Remove first 4 characters (label "Cons")
+                    'rate': rate.strip()
                 })
-        
-        return overall_rate, review_list
+
+            return overall_rate, review_list
+        except Exception as e:
+            st.error(f"Failed to fetch reviews: {e}")
+            return None, []
     else:
         return None, []
 
-# Helper function to convert rating to stars
-# def display_stars(rating, max_stars=5):
-#     filled_stars = "★" * int(float(rating))
-#     empty_stars = "☆" * (max_stars - int(float(rating)))
-#     return filled_stars + 
-
-
-def display_stars(rating, max_stars=5):
-    full_star_img = 'https://res.cloudinary.com/dwdrbmeng/image/upload/v1726581834/ef5kaqqtyfbksgvcegoj.png'
-    half_star_img = 'https://res.cloudinary.com/dwdrbmeng/image/upload/v1726582152/kyqmy0chxyjeq0mt1dzf.png'
-    empty_star_img = 'https://res.cloudinary.com/dwdrbmeng/image/upload/v1726581834/v48droljw5n3rgqmc1cz.png'
-
-    rating=float(rating)
-    full_stars = int(rating)
-    half_star = 1 if (rating - full_stars) >= 0.5 else 0
-    empty_stars = max_stars - full_stars - half_star
-    
-    star_html = ""
-    
-    # Add full stars
-    star_html += f'<img src="{full_star_img}" width="20" style="display:inline-block;">' * full_stars
-    
-    # Add half star if applicable
-    if half_star:
-        star_html += f'<img src="{half_star_img}" width="20" style="display:inline-block;">'
-    
-    # Add empty stars
-    star_html += f'<img src="{empty_star_img}" width="20" style="display:inline-block;">' * empty_stars
-    
-    # Display stars horizontally
-    return f'<span style="margin-left: 10px; display: inline-block;">{star_html}</span>'
-    
-
 # Streamlit UI
-st.title("Glassdoor Reviews Fetcher")
+st.title("Glassdoor Reviews Fetcher (Selenium)")
 
 # Input company name
 company_name_input = st.text_input("Enter Company Name", "American University in Cairo")
 
 if st.button("Fetch Reviews"):
     if company_name_input:
-        overall_rate, company_reviews = fetch_glassdoor_reviews(company_name_input)
-        
-        if overall_rate and company_reviews:
-            # Display overall rating with stars
-            rating_text = f"<span style='font-size: 24px; font-weight: bold;'>Overall Rating: {overall_rate}</span>"
-            stars_html = display_stars(overall_rate)
-            combined_html = f'<div style="display: flex; align-items: center;">{rating_text} {stars_html}</div>'
+        overall_rate, company_reviews = fetch_glassdoor_reviews_selenium(company_name_input)
 
-            # Use this in your main code
-            st.markdown(combined_html, unsafe_allow_html=True)
-            
+        if overall_rate and company_reviews:
+            # Display overall rating
+            st.write(f"Overall Rating: {overall_rate}")
+
             # Display reviews
-            st.subheader(f"Reviews:")
+            st.subheader("Reviews:")
             for idx, review in enumerate(company_reviews):
-                # st.markdown(f"**Review {idx + 1}:**")
-                review_rating_html = display_stars(review['rate'])
-                st.markdown(f"**Rating:** {review['rate']} {review_rating_html}", unsafe_allow_html=True)
-                st.write(f"**{review['title']}**")
-                st.markdown(f"<span style='color: green; font-weight: bold;'>Pros:</span> \n\n{review['pros']}", unsafe_allow_html=True)
-                st.markdown(f"<span style='color: red; font-weight: bold;'>Cons:</span> \n\n{review['cons']}", unsafe_allow_html=True)
-    
+                st.write(f"**Review {idx + 1}:**")
+                st.write(f"**Title:** {review['title']}")
+                st.write(f"**Pros:** {review['pros']}")
+                st.write(f"**Cons:** {review['cons']}")
+                st.write(f"**Rating:** {review['rate']}")
                 st.write("---")
         else:
             st.error("Failed to fetch reviews or no reviews found.")
